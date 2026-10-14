@@ -1,0 +1,15 @@
+## Interface: 16001, 120000, 120001, 120005, 120007, 120100
+## Title: XIVPlates
+## Category: Frog Wizard
+## Notes: FFXIV-style enemy nameplates to go with XIVPlayer and XIVTarget: a thin glowing gauge, the name and level above, the cast hanging underneath, threat colours and your debuffs.
+## Version: 0.1.0
+## X-Curse-Project-ID: 1745193
+## SavedVariables: XIVPlatesDB
+## IconTexture: Interface\Icons\Ability_Hunter_MarkedForDeath
+## AddonCompartmentFunc: XIVPlates_OnCompartmentClick
+
+Libs\FrogLib\FrogLib.xml
+ConfigKit.lua
+Media.lua
+Plates.lua
+Core.lua
