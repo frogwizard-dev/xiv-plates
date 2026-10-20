@@ -15,7 +15,10 @@ ns.defaults = {
     smooth = true,      -- the gauge eases to new values
     -- "xiv": FFXIV's colours (red engaged, yellow passive); "reaction": plain hostile / neutral.
     colorMode = "xiv",
-    tinted = true,      -- text in a light version of the gauge's colour, as FFXIV prints it
+    -- The text's colour: "gauge" (a light version of the gauge's, as FFXIV prints it), "reaction"
+    -- (by hostility: hostile red, neutral yellow, whatever threat colour the gauge has) or "white".
+    textColor = "gauge",
+    tapGrey = true,     -- grey gauge and text once someone else got the first hit (colors.tapped)
     -- Michroma: wide, like FFXIV's (and XIVTarget's) gauge text.
     font = "Interface\\AddOns\\XIVPlates\\Fonts\\Michroma.ttf",
     outline = "OUTLINE",
@@ -66,6 +69,7 @@ ns.defaults = {
         target = { r = 0.96, g = 0.86, b = 0.56 }, -- FFXIV's gold
         uninterruptible = { r = 0.58, g = 0.58, b = 0.62 },
         execute = { r = 0.66, g = 0.38, b = 0.96 },
+        tapped = { r = 0.55, g = 0.55, b = 0.55 },
     },
 }
 
@@ -82,6 +86,8 @@ end
 local LEFT, RIGHT, COL_W, SUB = 0, 380, 360, 20
 local STYLES = UI.Options("line", "Line (thin glow, like XIVTarget)", "framed", "Framed (gold rim, like XIVPlayer)")
 local COLOR_MODES = UI.Options("xiv", "FFXIV colours", "reaction", "Hostile red, neutral yellow")
+local TEXT_COLORS = UI.Options("gauge", "A light version of the gauge's", "reaction",
+    "By hostility (hostile red, neutral yellow)", "white", "White")
 local ROLES = UI.Options("auto", "Auto (tanking stance, form or aura)", "tank", "Always tanking", "damage", "Never tanking")
 
 local function Help(p, place, text, h, dx)
@@ -136,8 +142,8 @@ local function BuildLook(p)
         function(v) db.text.right = v end), 28)
     Help(p, right, "Words: |cffffd100level|r, |cffffd100name|r, |cffffd100class|r, |cffffd100value|r, "
         .. "|cffffd100max|r, |cffffd100percent|r (|cffffd100percent.1|r for a decimal). Empty hides it.", 30)
-    right(UI.Checkbox(p, "Text in a light version of the gauge's colour", function() return db.tinted end,
-        function(v) db.tinted = v end), 26)
+    right(UI.Dropdown(p, "Text colour", TEXT_COLORS, function() return db.textColor end,
+        function(v) db.textColor = v end), 30)
     right(UI.Checkbox(p, "The level coloured by how hard the enemy is", function() return db.levelColor end,
         function(v) db.levelColor = v end), 30)
 end
@@ -208,6 +214,9 @@ local function BuildTarget(p)
     place(UI.Checkbox(p, "The gauge in the execute colour once it's in your execute range", function() return db.execute end,
         function(v) db.execute = v end), 26)
     Swatch(p, place, "Execute", "execute", SUB)
+    place(UI.Checkbox(p, "Grey once someone else got the first hit", function() return db.tapGrey end,
+        function(v) db.tapGrey = v end), 26)
+    Swatch(p, place, "Tapped", "tapped", SUB)
 
     local right, rhead = UI.Column(p, RIGHT, COL_W)
     rhead("Threat")
@@ -282,6 +291,12 @@ loader:SetScript("OnEvent", function(_, event, arg1)
         if db.version < 3 then
             if type(db.text) == "table" and db.text.left == "Lv level name" then db.text.left = nil end
             db.version = 3
+        end
+        -- 0.2: the text colour became a choice (by hostility too).
+        if db.version < 4 then
+            if db.tinted == false then db.textColor = "white" end
+            db.tinted = nil
+            db.version = 4
         end
         FrogLib.Util.CopyDefaults(ns.defaults, XIVPlatesDB)
         ns.db = XIVPlatesDB

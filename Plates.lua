@@ -27,10 +27,27 @@ local REACTION = {
     friendly = { r = 0.95, g = 0.85, b = 0.35 }, fallback = { r = 0.90, g = 0.32, b = 0.25 },
 }
 
--- Threat first (while you're on its list and threat colours are on), then FFXIV's colours or the
--- plain reaction ones.
+-- The text "by hostility" (textColor "reaction"): hostile red, neutral yellow, a little lighter
+-- than the gauge's so it reads over the world; tapped grey comes first (see Tapped).
+local HOSTILITY = {
+    hostile = { r = 1, g = 0.45, b = 0.38 }, neutral = { r = 1, g = 0.9, b = 0.45 },
+    friendly = { r = 0.55, g = 0.9, b = 0.55 }, fallback = { r = 1, g = 0.45, b = 0.38 },
+}
+
+-- Someone else got the first hit (tapGrey): its loot and credit aren't yours. May be secret in
+-- combat; then it isn't grey.
+local function Tapped(unit)
+    return ns.db.tapGrey and FrogLib.Safe(UnitIsTapDenied(unit)) == true
+end
+
+-- Tapped grey first, then threat (while you're on its list and threat colours are on), then
+-- FFXIV's colours or the plain reaction ones.
 local function Colour(unit)
     local db = ns.db
+    if Tapped(unit) then
+        local c = db.colors.tapped
+        return c.r, c.g, c.b
+    end
     if db.threat then
         local r, g, b = Engine.ThreatColour(unit, db.colors, db.role)
         if r then return r, g, b end
@@ -274,8 +291,8 @@ function Plates:UpdateExecute(f)
     f.execute:Show()
 end
 
--- The gauge's colour, and the text in a light version of it (or white), as FFXIV prints it. Your
--- target's text in the target colour.
+-- The gauge's colour, and the text in a light version of it as FFXIV prints it, by hostility
+-- (whatever the gauge shows for threat), or white. Your target's text in the target colour.
 function Plates:UpdateColour(f)
     local r, g, b = Colour(f.unit)
     if not r then r, g, b = 0.9, 0.32, 0.25 end
@@ -285,7 +302,13 @@ function Plates:UpdateColour(f)
     if f.isTarget and db.targetText then
         local c = db.colors.target
         tr, tg, tb = c.r, c.g, c.b
-    elseif db.tinted then
+    elseif db.textColor == "reaction" then
+        if Tapped(f.unit) then
+            tr, tg, tb = Color.Lighten(r, g, b, 0.3)
+        else
+            tr, tg, tb = Color.Unit(f.unit, HOSTILITY)
+        end
+    elseif db.textColor == "gauge" then
         tr, tg, tb = Color.Lighten(r, g, b, 0.55)
     end
     f.name:SetTextColor(tr, tg, tb)

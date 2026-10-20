@@ -1,5 +1,10 @@
 # XIVPlates
 
+## 0.2.0
+
+- **Grey once someone else got the first hit**: an enemy tapped by another player (no loot or credit for you) has its gauge and text in grey, whatever the colour mode or threat would make it. On to start with; the grey is yours to set (Target, colours & threat page).
+- **Text colour by hostility**: the "Text colour" choice on the Look page can now colour the name, level and health by how the enemy feels about you (hostile red, neutral yellow), whatever colour the gauge shows for threat. The other choices: a light version of the gauge's colour (as before) or white. Your target's text still takes the target colour unless that's turned off.
+
 ## 0.1.0
 
 - First version: FFXIV-style enemy nameplates, in XIVTarget's look, to go with XIVPlayer and XIVTarget. Friendly nameplates stay Blizzard's.
