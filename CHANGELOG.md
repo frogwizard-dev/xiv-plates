@@ -1,5 +1,9 @@
 # XIVPlates
 
+## 0.2.1
+
+- Options > AddOns with the gamepad interface: the Frog Wizard pages no longer upset the game's gamepad navigation (which could bring up errors on opening the settings). From FrogLib 1.5.0.
+
 ## 0.2.0
 
 - **Grey once someone else got the first hit**: an enemy tapped by another player (no loot or credit for you) has its gauge and text in grey, whatever the colour mode or threat would make it. On to start with; the grey is yours to set (Target, colours & threat page).
