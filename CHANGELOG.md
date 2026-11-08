@@ -1,5 +1,9 @@
 # XIVPlates
 
+## 0.3.0
+
+- **Rare and elite icons**: Blizzard's own nameplate icons just after the name: a silver star for a rare, a silver dragon for a rare elite, and (if you like) a gold dragon for an elite or a boss. "Rare / elite icon" on the Casts & debuffs page: rares and rare elites (the default), elites too, or none; its size is yours to set. With the name not on its own row, it sits before the gauge.
+
 ## 0.2.1
 
 - Options > AddOns with the gamepad interface: the Frog Wizard pages no longer upset the game's gamepad navigation (which could bring up errors on opening the settings). From FrogLib 1.5.0.

@@ -19,6 +19,14 @@ local Combo = FrogLib.Combo
 local combo -- your combo points: one row, on your target's plate (rogues; druids in cat form)
 local Color, Unit, Icons = FrogLib.Color, FrogLib.Unit, FrogLib.Icons
 local QUEST_ICON = "Interface\\GossipFrame\\AvailableQuestIcon" -- the yellow "!"
+-- Rares and elites: Blizzard's own nameplate icons (a silver star for a rare, a silver dragon for a
+-- rare elite, a gold one for an elite or a boss).
+local RANK = {
+    rare = "UI-HUD-UnitFrame-Target-PortraitOn-Boss-Rare-Star",
+    rareelite = "nameplates-icon-elite-silver",
+    elite = "nameplates-icon-elite-gold",
+    worldboss = "nameplates-icon-elite-gold",
+}
 
 -- "reaction": plain hostile red / neutral yellow, tapped grey, players in their class colour.
 local REACTION = {
@@ -119,6 +127,8 @@ local function Create(f)
     f.quest = words:CreateTexture(nil, "OVERLAY")
     f.quest:SetTexture(QUEST_ICON)
     f.quest:Hide()
+    f.rank = words:CreateTexture(nil, "OVERLAY")
+    f.rank:Hide()
     -- Your target: gold chevrons either side of the gauge, as FFXIV links a target.
     f.chevronLeft = Text(words, "RIGHT")
     f.chevronLeft:SetText(">")
@@ -248,6 +258,15 @@ function Plates:Layout(f)
     f.chevronRight:SetPoint("LEFT", bar, "RIGHT", 4, 0)
     f.mark:ClearAllPoints()
     f.mark:SetPoint("RIGHT", bar, "LEFT", -4 - db.textSize, 0)
+    -- The rare / elite icon: just after the name on its own row; otherwise before the gauge,
+    -- past the raid mark.
+    f.rank:SetSize(db.rankSize, db.rankSize)
+    f.rank:ClearAllPoints()
+    if db.nameRow then
+        f.rank:SetPoint("LEFT", f.name, "RIGHT", 2, 0)
+    else
+        f.rank:SetPoint("RIGHT", bar, "LEFT", -8 - db.textSize - (db.raidMarks and db.markSize or 0), 0)
+    end
     f.threat:ClearAllPoints()
     local tx, ty = Nudge(db, "threat")
     f.threat:SetPoint("LEFT", bar, "RIGHT", 6 + db.textSize + tx, ty)
@@ -325,6 +344,16 @@ end
 function Plates:UpdateMark(f)
     local db = ns.db
     f.mark:SetShown(db.raidMarks and Icons.RaidMark(f.mark, f.unit, db.markSize) or false)
+end
+
+-- The rare / elite icon (rankIcon: "rare" rares and rare elites, "all" elites too, "off").
+function Plates:UpdateRank(f)
+    local mode = ns.db.rankIcon
+    local c = mode ~= "off" and f.unit and FrogLib.Safe(UnitClassification(f.unit))
+    local atlas = c and RANK[c]
+    if mode == "rare" and (c == "elite" or c == "worldboss") then atlas = nil end
+    if atlas then f.rank:SetAtlas(atlas) end
+    f.rank:SetShown(atlas ~= nil)
 end
 
 -- A "!" before the level and name when your quests still need this enemy. The level and name sit
@@ -434,10 +463,14 @@ local UPDATES = {
         Plates:UpdateThreat(f)
         Plates:UpdateMark(f)
         Plates:UpdateQuest(f)
+        Plates:UpdateRank(f)
     end,
     health = function(f) Plates:UpdateHealth(f) end,
     name = function(f) Plates:UpdateText(f) end,
-    class = function(f) Plates:UpdateText(f) end,
+    class = function(f)
+        Plates:UpdateText(f)
+        Plates:UpdateRank(f)
+    end,
     threat = function(f)
         Plates:UpdateColour(f)
         Plates:UpdateThreat(f)

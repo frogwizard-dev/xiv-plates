@@ -51,6 +51,8 @@ ns.defaults = {
     questMarker = true, -- a "!" before enemies your quests still need
     raidMarks = true,
     markSize = 16,
+    rankIcon = "rare",  -- an icon for rares and rare elites ("all": elites too; "off")
+    rankSize = 14,
     -- Your target: bigger, its gauge a pixel thicker and its text in the target colour (gold
     -- chevrons either side, if you like); the others at otherAlpha.
     targetScale = 1.1,
@@ -88,6 +90,7 @@ local STYLES = UI.Options("line", "Line (thin glow, like XIVTarget)", "framed", 
 local COLOR_MODES = UI.Options("xiv", "FFXIV colours", "reaction", "Hostile red, neutral yellow")
 local TEXT_COLORS = UI.Options("gauge", "A light version of the gauge's", "reaction",
     "By hostility (hostile red, neutral yellow)", "white", "White")
+local RANKS = UI.Options("rare", "Rares and rare elites", "all", "Rares and elites", "off", "None")
 local ROLES = UI.Options("auto", "Auto (tanking stance, form or aura)", "tank", "Always tanking", "damage", "Never tanking")
 
 local function Help(p, place, text, h, dx)
@@ -180,6 +183,11 @@ local function BuildCasts(p)
         function(v) db.markSize = v end), 28, SUB)
     right(UI.Checkbox(p, "A \"!\" before enemies your quests still need", function() return db.questMarker end,
         function(v) db.questMarker = v end), 26)
+    right(UI.Dropdown(p, "Rare / elite icon", RANKS, function() return db.rankIcon end,
+        function(v) db.rankIcon = v end), 30)
+    right(UI.Stepper(p, "Its size", 8, 32, 1, function() return db.rankSize end,
+        function(v) db.rankSize = v end), 28, SUB)
+    Help(p, right, "After the name: a silver star for a rare, a silver dragon for a rare elite, gold for an elite.", 30)
 end
 
 local function BuildTarget(p)
