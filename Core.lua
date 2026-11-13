@@ -1,7 +1,9 @@
 local ADDON, ns = ...
-local UI = ns.UI
 
 -- XIVPlates: FFXIV-style enemy nameplates (see Plates.lua), to go with XIVPlayer and XIVTarget.
+
+-- The settings controls are FrogLib's (UI.lua); every change calls ns.Refresh().
+local UI = FrogLib.UI.Kit({ refresh = function() ns.Refresh() end })
 
 ns.defaults = {
     enabled = true,
@@ -43,7 +45,7 @@ ns.defaults = {
     castTime = true,
     castColor = true,   -- casts you can't interrupt in colors.uninterruptible
     auras = true,       -- your debuffs (Blizzard's) over the name
-    allDebuffs = true,  -- every debuff of yours, not just the ones on Blizzard's list
+    allDebuffs = true,  -- every debuff of yours, not only the ones on Blizzard's list
     threat = true,      -- colour by threat while you're on its threat list
     role = "auto",      -- "auto" (a tanking stance, form or aura), "tank" or "damage"
     threatText = true,  -- your lead (or how far behind), or your threat %, past the gauge
@@ -82,10 +84,10 @@ function ns.Refresh()
 end
 
 ------------------------------------------------------------------------------
--- Settings window: three pages, two columns of headed groups each (FrogLib's UI.Column)
+-- Settings window: four pages, two columns of headed groups each (FrogLib's UI.Column)
 ------------------------------------------------------------------------------
 
-local LEFT, RIGHT, COL_W, SUB = 0, 380, 360, 20
+local LEFT, RIGHT, COLUMN_WIDTH, INDENT = 0, 380, 360, 20
 local STYLES = UI.Options("line", "Line (thin glow, like XIVTarget)", "framed", "Framed (gold rim, like XIVPlayer)")
 local COLOR_MODES = UI.Options("xiv", "FFXIV colours", "reaction", "Hostile red, neutral yellow")
 local TEXT_COLORS = UI.Options("gauge", "A light version of the gauge's", "reaction",
@@ -93,150 +95,105 @@ local TEXT_COLORS = UI.Options("gauge", "A light version of the gauge's", "react
 local RANKS = UI.Options("rare", "Rares and rare elites", "all", "Rares and elites", "off", "None")
 local ROLES = UI.Options("auto", "Auto (tanking stance, form or aura)", "tank", "Always tanking", "damage", "Never tanking")
 
-local function Help(p, place, text, h, dx)
-    place(UI.Help(p, text, COL_W - 10 - (dx or 0)), h, dx or 4)
+local function Help(page, place, text, height, indent)
+    place(UI.Help(page, text, COLUMN_WIDTH - 10 - (indent or 0)), height, indent or 4)
 end
 
-local function Swatch(p, place, label, key, dx)
-    local c = ns.db.colors
-    place(UI.ColorSwatch(p, label, function() return c[key] end,
-        function(r, g, b) c[key] = { r = r, g = g, b = b } end), 28, dx)
+local function Swatch(page, place, label, key, indent)
+    place(UI.ColorSwatch(page, label, ns.db.colors, key), 28, indent)
 end
 
-local function BuildLook(p)
+local function BuildLook(page)
     local db = ns.db
-    local place, head = UI.Column(p, LEFT, COL_W)
+    local place, head = UI.Column(page, LEFT, COLUMN_WIDTH)
     head("Plates")
-    place(UI.Checkbox(p, "XIV-style enemy nameplates", function() return db.enabled end,
-        function(v) db.enabled = v end), 28)
-    place(UI.Dropdown(p, "Gauge", STYLES, function() return db.style end, function(v) db.style = v end), 30)
-    place(UI.Dropdown(p, "Texture", function() return ns.Media:List("statusbar") end,
-        function() return db.texture end, function(v) db.texture = v end), 30)
-    place(UI.Checkbox(p, "The gauge eases to new values", function() return db.smooth end,
-        function(v) db.smooth = v end), 30)
+    place(UI.Checkbox(page, "XIV-style enemy nameplates", db, "enabled"), 28)
+    place(UI.Dropdown(page, "Gauge", STYLES, db, "style"), 30)
+    place(UI.Dropdown(page, "Texture", function() return ns.Media:List("statusbar") end, db, "texture"), 30)
+    place(UI.Checkbox(page, "The gauge eases to new values", db, "smooth"), 30)
     head("Size")
-    place(UI.Stepper(p, "Width (0 = Blizzard's)", 0, 300, 5, function() return db.width end,
-        function(v) db.width = v end), 28)
-    place(UI.Stepper(p, "Gauge height", 1, 16, 1, function() return db.height end,
-        function(v) db.height = v end), 28)
-    place(UI.Stepper(p, "Scale", 0.5, 2, 0.05, function() return db.scale end,
-        function(v) db.scale = v end, "%.2f"), 28)
-    place(UI.Checkbox(p, "Let the game dim plates behind terrain or far away", function() return db.gameFade end,
-        function(v) db.gameFade = v end), 30)
-    Help(p, place, "Friendly nameplates stay Blizzard's. The cast bar and your debuffs are Blizzard's own, "
+    place(UI.Stepper(page, "Width (0 = Blizzard's)", 0, 300, 5, db, "width"), 28)
+    place(UI.Stepper(page, "Gauge height", 1, 16, 1, db, "height"), 28)
+    place(UI.Stepper(page, "Scale", 0.5, 2, 0.05, db, "scale", "%.2f"), 28)
+    place(UI.Checkbox(page, "Let the game dim plates behind terrain or far away", db, "gameFade"), 30)
+    Help(page, place, "Friendly nameplates stay Blizzard's. The cast bar and your debuffs are Blizzard's own, "
         .. "moved round the gauge, so they keep working where the game hides cast and aura details.", 44)
 
-    local right, rhead = UI.Column(p, RIGHT, COL_W)
-    rhead("Text")
-    right(UI.Dropdown(p, "Font", function() return ns.Media:List("font") end,
-        function() return db.font end, function(v) db.font = v end), 30)
-    right(UI.Dropdown(p, "Outline", UI.OUTLINES, function() return db.outline end,
-        function(v) db.outline = v end), 30)
-    right(UI.Stepper(p, "Size", 6, 20, 1, function() return db.textSize end, function(v) db.textSize = v end), 28)
-    right(UI.Checkbox(p, "The name centred on its own row above", function() return db.nameRow end,
-        function(v) db.nameRow = v end), 26)
-    right(UI.TextBox(p, "Its row", function() return db.text.name end,
-        function(v) db.text.name = v end), 28, SUB)
-    right(UI.Checkbox(p, "The left and right texts under the gauge (off: over it)", function() return db.belowBar end,
-        function(v) db.belowBar = v end), 26)
-    right(UI.TextBox(p, "At the left end", function() return db.text.left end,
-        function(v) db.text.left = v end), 28)
-    right(UI.TextBox(p, "At the right end", function() return db.text.right end,
-        function(v) db.text.right = v end), 28)
-    Help(p, right, "Words: |cffffd100level|r, |cffffd100name|r, |cffffd100class|r, |cffffd100value|r, "
+    local right, rightHead = UI.Column(page, RIGHT, COLUMN_WIDTH)
+    rightHead("Text")
+    right(UI.Dropdown(page, "Font", function() return ns.Media:List("font") end, db, "font"), 30)
+    right(UI.Dropdown(page, "Outline", UI.OUTLINES, db, "outline"), 30)
+    right(UI.Stepper(page, "Size", 6, 20, 1, db, "textSize"), 28)
+    right(UI.Checkbox(page, "The name centred on its own row above", db, "nameRow"), 26)
+    right(UI.TextBox(page, "Its row", db.text, "name"), 28, INDENT)
+    right(UI.Checkbox(page, "The left and right texts under the gauge (off: over it)", db, "belowBar"), 26)
+    right(UI.TextBox(page, "At the left end", db.text, "left"), 28)
+    right(UI.TextBox(page, "At the right end", db.text, "right"), 28)
+    Help(page, right, "Words: |cffffd100level|r, |cffffd100name|r, |cffffd100class|r, |cffffd100value|r, "
         .. "|cffffd100max|r, |cffffd100percent|r (|cffffd100percent.1|r for a decimal). Empty hides it.", 30)
-    right(UI.Dropdown(p, "Text colour", TEXT_COLORS, function() return db.textColor end,
-        function(v) db.textColor = v end), 30)
-    right(UI.Checkbox(p, "The level coloured by how hard the enemy is", function() return db.levelColor end,
-        function(v) db.levelColor = v end), 30)
+    right(UI.Dropdown(page, "Text colour", TEXT_COLORS, db, "textColor"), 30)
+    right(UI.Checkbox(page, "The level coloured by how hard the enemy is", db, "levelColor"), 30)
 end
 
-local function BuildCasts(p)
+local function BuildCasts(page)
     local db = ns.db
-    local place, head = UI.Column(p, LEFT, COL_W)
+    local place, head = UI.Column(page, LEFT, COLUMN_WIDTH)
     head("Cast bar")
-    place(UI.Checkbox(p, "The cast as a line under the gauge", function() return db.castBar end,
-        function(v) db.castBar = v end), 28)
-    place(UI.Stepper(p, "Line height", 1, 12, 1, function() return db.castHeight end,
-        function(v) db.castHeight = v end), 28, SUB)
-    place(UI.Stepper(p, "Gap under the gauge", 0, 30, 1, function() return db.castGap end,
-        function(v) db.castGap = v end), 28, SUB)
-    place(UI.Stepper(p, "Spell name and time size", 6, 18, 1, function() return db.castTextSize end,
-        function(v) db.castTextSize = v end), 28, SUB)
-    place(UI.Checkbox(p, "Time left on the cast", function() return db.castTime end,
-        function(v) db.castTime = v end), 26, SUB)
-    place(UI.Checkbox(p, "Casts you can't interrupt in their own colour", function() return db.castColor end,
-        function(v) db.castColor = v end), 28)
-    Swatch(p, place, "Can't interrupt", "uninterruptible", SUB)
+    place(UI.Checkbox(page, "The cast as a line under the gauge", db, "castBar"), 28)
+    place(UI.Stepper(page, "Line height", 1, 12, 1, db, "castHeight"), 28, INDENT)
+    place(UI.Stepper(page, "Gap under the gauge", 0, 30, 1, db, "castGap"), 28, INDENT)
+    place(UI.Stepper(page, "Spell name and time size", 6, 18, 1, db, "castTextSize"), 28, INDENT)
+    place(UI.Checkbox(page, "Time left on the cast", db, "castTime"), 26, INDENT)
+    place(UI.Checkbox(page, "Casts you can't interrupt in their own colour", db, "castColor"), 28)
+    Swatch(page, place, "Can't interrupt", "uninterruptible", INDENT)
 
-    local right, rhead = UI.Column(p, RIGHT, COL_W)
-    rhead("Your debuffs")
-    right(UI.Checkbox(p, "Your debuffs over the name (Blizzard's)", function() return db.auras end,
-        function(v) db.auras = v end), 26)
-    right(UI.Checkbox(p, "Every debuff of yours, not just Blizzard's list", function() return db.allDebuffs end,
-        function(v) db.allDebuffs = v end), 26, SUB)
-    Help(p, right, "Their size is the game's own (Options > Nameplates).", 20)
-    rhead("Marks")
-    right(UI.Checkbox(p, "Raid marks beside the gauge", function() return db.raidMarks end,
-        function(v) db.raidMarks = v end), 26)
-    right(UI.Stepper(p, "Raid mark size", 8, 40, 1, function() return db.markSize end,
-        function(v) db.markSize = v end), 28, SUB)
-    right(UI.Checkbox(p, "A \"!\" before enemies your quests still need", function() return db.questMarker end,
-        function(v) db.questMarker = v end), 26)
-    right(UI.Dropdown(p, "Rare / elite icon", RANKS, function() return db.rankIcon end,
-        function(v) db.rankIcon = v end), 30)
-    right(UI.Stepper(p, "Its size", 8, 32, 1, function() return db.rankSize end,
-        function(v) db.rankSize = v end), 28, SUB)
-    Help(p, right, "After the name: a silver star for a rare, a silver dragon for a rare elite, gold for an elite.", 30)
+    local right, rightHead = UI.Column(page, RIGHT, COLUMN_WIDTH)
+    rightHead("Your debuffs")
+    right(UI.Checkbox(page, "Your debuffs over the name (Blizzard's)", db, "auras"), 26)
+    right(UI.Checkbox(page, "Every debuff of yours, not only Blizzard's list", db, "allDebuffs"), 26, INDENT)
+    Help(page, right, "Their size is the game's own (Options > Nameplates).", 20)
+    rightHead("Marks")
+    right(UI.Checkbox(page, "Raid marks beside the gauge", db, "raidMarks"), 26)
+    right(UI.Stepper(page, "Raid mark size", 8, 40, 1, db, "markSize"), 28, INDENT)
+    right(UI.Checkbox(page, "A \"!\" before enemies your quests still need", db, "questMarker"), 26)
+    right(UI.Dropdown(page, "Rare / elite icon", RANKS, db, "rankIcon"), 30)
+    right(UI.Stepper(page, "Its size", 8, 32, 1, db, "rankSize"), 28, INDENT)
+    Help(page, right, "After the name: a silver star for a rare, a silver dragon for a rare elite, gold for an elite.", 30)
 end
 
-local function BuildTarget(p)
+local function BuildTarget(page)
     local db = ns.db
-    local place, head = UI.Column(p, LEFT, COL_W)
+    local place, head = UI.Column(page, LEFT, COLUMN_WIDTH)
     head("Your target")
-    place(UI.Stepper(p, "Its plate's size", 1, 2, 0.05, function() return db.targetScale end,
-        function(v) db.targetScale = v end, "%.2f"), 28)
-    place(UI.Checkbox(p, "Gold chevrons either side of it", function() return db.chevrons end,
-        function(v) db.chevrons = v end), 26)
-    place(UI.Checkbox(p, "Its text in the target colour", function() return db.targetText end,
-        function(v) db.targetText = v end), 26)
-    Swatch(p, place, "Target colour", "target")
-    place(UI.Stepper(p, "Other plates' opacity", 0.1, 1, 0.05, function() return db.otherAlpha end,
-        function(v) db.otherAlpha = v end, "%.2f"), 30)
-    local cb = db.combo
+    place(UI.Stepper(page, "Its plate's size", 1, 2, 0.05, db, "targetScale", "%.2f"), 28)
+    place(UI.Checkbox(page, "Gold chevrons either side of it", db, "chevrons"), 26)
+    place(UI.Checkbox(page, "Its text in the target colour", db, "targetText"), 26)
+    Swatch(page, place, "Target colour", "target")
+    place(UI.Stepper(page, "Other plates' opacity", 0.1, 1, 0.05, db, "otherAlpha", "%.2f"), 30)
+    local combo = db.combo
     head("Combo points")
-    place(UI.Checkbox(p, "Under your target's gauge (rogues, druids in cat form)", function() return cb.enabled end,
-        function(v) cb.enabled = v end), 26)
-    place(UI.Checkbox(p, "See-through while you have none", function() return cb.hideEmpty end,
-        function(v) cb.hideEmpty = v end), 26, SUB)
-    place(UI.Stepper(p, "Height", 1, 10, 1, function() return cb.height end, function(v) cb.height = v end), 28, SUB)
-    place(UI.Stepper(p, "Gap between them", 0, 12, 1, function() return cb.spacing end,
-        function(v) cb.spacing = v end), 28, SUB)
-    place(UI.Stepper(p, "Gap under the gauge", 0, 20, 1, function() return cb.gap end,
-        function(v) cb.gap = v end), 28, SUB)
-    place(UI.ColorSwatch(p, "Colour", function() return cb.color end,
-        function(r, g, b) cb.color = { r = r, g = g, b = b } end), 30, SUB)
+    place(UI.Checkbox(page, "Under your target's gauge (rogues, druids in cat form)", combo, "enabled"), 26)
+    place(UI.Checkbox(page, "See-through while you have none", combo, "hideEmpty"), 26, INDENT)
+    place(UI.Stepper(page, "Height", 1, 10, 1, combo, "height"), 28, INDENT)
+    place(UI.Stepper(page, "Gap between them", 0, 12, 1, combo, "spacing"), 28, INDENT)
+    place(UI.Stepper(page, "Gap under the gauge", 0, 20, 1, combo, "gap"), 28, INDENT)
+    place(UI.ColorSwatch(page, "Colour", combo, "color"), 30, INDENT)
     head("Colours")
-    place(UI.Dropdown(p, "Colours", COLOR_MODES, function() return db.colorMode end,
-        function(v) db.colorMode = v end), 30)
-    place(UI.Checkbox(p, "The gauge in the execute colour once it's in your execute range", function() return db.execute end,
-        function(v) db.execute = v end), 26)
-    Swatch(p, place, "Execute", "execute", SUB)
-    place(UI.Checkbox(p, "Grey once someone else got the first hit", function() return db.tapGrey end,
-        function(v) db.tapGrey = v end), 26)
-    Swatch(p, place, "Tapped", "tapped", SUB)
+    place(UI.Dropdown(page, "Colours", COLOR_MODES, db, "colorMode"), 30)
+    place(UI.Checkbox(page, "The gauge in the execute colour once it's in your execute range", db, "execute"), 26)
+    Swatch(page, place, "Execute", "execute", INDENT)
+    place(UI.Checkbox(page, "Grey once someone else got the first hit", db, "tapGrey"), 26)
+    Swatch(page, place, "Tapped", "tapped", INDENT)
 
-    local right, rhead = UI.Column(p, RIGHT, COL_W)
-    rhead("Threat")
-    right(UI.Checkbox(p, "Colour by threat while you're on its list", function() return db.threat end,
-        function(v) db.threat = v end), 26)
-    right(UI.Dropdown(p, "Role", ROLES, function() return db.role end, function(v) db.role = v end), 30, SUB)
-    Swatch(p, right, "Tanking, it's on you / not tanking, it's not", "safe", SUB)
-    Swatch(p, right, "Slipping, or coming your way", "warn", SUB)
-    Swatch(p, right, "Tanking, it's off you / not tanking, it's on you", "danger", SUB)
-    right(UI.Checkbox(p, "Your lead (or threat %) past the gauge", function() return db.threatText end,
-        function(v) db.threatText = v end), 30)
-    Help(p, right, "/xivplates threat: what the game shows addons of the threat on your target.", 30)
+    local right, rightHead = UI.Column(page, RIGHT, COLUMN_WIDTH)
+    rightHead("Threat")
+    right(UI.Checkbox(page, "Colour by threat while you're on its list", db, "threat"), 26)
+    right(UI.Dropdown(page, "Role", ROLES, db, "role"), 30, INDENT)
+    Swatch(page, right, "Tanking, it's on you / not tanking, it's not", "safe", INDENT)
+    Swatch(page, right, "Slipping, or coming your way", "warn", INDENT)
+    Swatch(page, right, "Tanking, it's off you / not tanking, it's on you", "danger", INDENT)
+    right(UI.Checkbox(page, "Your lead (or threat %) past the gauge", db, "threatText"), 30)
+    Help(page, right, "/xivplates threat: what the game shows addons of the threat on your target.", 30)
 end
 
 -- Every text: its own size (0: the shared one) and nudge, side by side.
@@ -245,21 +202,19 @@ local TEXT_PARTS = {
     { "threat", "Threat text" }, { "castName", "The cast's spell name" }, { "castTime", "The cast's time left" },
 }
 
-local function BuildTexts(p)
+local function BuildTexts(page)
     local db = ns.db
-    local place, head = UI.Column(p, LEFT, COL_W)
-    local right, rhead = UI.Column(p, RIGHT, COL_W)
+    local place, head = UI.Column(page, LEFT, COLUMN_WIDTH)
+    local right, rightHead = UI.Column(page, RIGHT, COLUMN_WIDTH)
     for i, part in ipairs(TEXT_PARTS) do
-        local t = db.texts[part[1]]
+        local settings = db.texts[part[1]]
         local put, title = place, head
-        if i > 3 then put, title = right, rhead end
+        if i > 3 then put, title = right, rightHead end
         title(part[2])
-        put(UI.Stepper(p, "Size (0 = the shared size)", 0, 30, 1, function() return t.size end,
-            function(v) t.size = v end), 28)
-        put(UI.Pair(p, "Nudge", { "x", -60, 60, function() return t.x end, function(v) t.x = v end },
-            { "y", -40, 40, function() return t.y end, function(v) t.y = v end }), 30)
+        put(UI.Stepper(page, "Size (0 = the shared size)", 0, 30, 1, settings, "size"), 28)
+        put(UI.Pair(page, "Nudge", { "x", -60, 60, settings, "x" }, { "y", -40, 40, settings, "y" }), 30)
     end
-    Help(p, place, "x moves a text right (left when negative), y up (down). The rows above and below the "
+    Help(page, place, "x moves a text right (left when negative), y up (down). The rows above and below the "
         .. "gauge make room for each text's size.", 30)
 end
 
@@ -281,8 +236,8 @@ end
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("ADDON_LOADED")
 loader:RegisterEvent("PLAYER_LOGIN")
-loader:SetScript("OnEvent", function(_, event, arg1)
-    if event == "ADDON_LOADED" and arg1 == ADDON then
+loader:SetScript("OnEvent", function(_, event, addonName)
+    if event == "ADDON_LOADED" and addonName == ADDON then
         XIVPlatesDB = XIVPlatesDB or {}
         local db = XIVPlatesDB
         -- 0.1's first defaults, where left as they were: the newer ones (XIVTarget's font, wider
@@ -290,8 +245,8 @@ loader:SetScript("OnEvent", function(_, event, arg1)
         if (db.version or 1) < 2 then
             local was = { width = 120, textSize = 10, targetScale = 1.15, chevrons = true,
                 font = "Interface\\AddOns\\XIVPlates\\Fonts\\XIV.ttf" }
-            for k, v in pairs(was) do
-                if db[k] == v then db[k] = nil end
+            for key, old in pairs(was) do
+                if db[key] == old then db[key] = nil end
             end
             db.version = 2
         end
@@ -315,8 +270,8 @@ end)
 
 SLASH_XIVPLATES1 = "/xivplates"
 SLASH_XIVPLATES2 = "/xpl"
-SlashCmdList.XIVPLATES = function(msg)
-    if strtrim(msg or ""):lower() == "threat" then
+SlashCmdList.XIVPLATES = function(text)
+    if strtrim(text or ""):lower() == "threat" then
         ns.Plates:ThreatReport()
     else
         ns.ToggleConfig()

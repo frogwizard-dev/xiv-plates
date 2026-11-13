@@ -12,4 +12,3 @@ ns.Media = FrogLib.Media.New({
     },
     fallbackFont = FONTS .. "XIV.ttf",
 })
-ns.FONTS = FONTS

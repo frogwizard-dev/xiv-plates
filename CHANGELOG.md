@@ -1,5 +1,10 @@
 # XIVPlates
 
+## 0.3.1
+
+- Russian, Korean and Chinese clients: names no longer show blank. The default font (Michroma) has no letters for those languages, so there it's drawn in M PLUS 1p (Russian) or the game's own font (Korean, Chinese); your font setting stays as it is. From FrogLib 1.10.1.
+- Under the hood: tidier code, with more of it shared through FrogLib. Nothing else works differently.
+
 ## 0.3.0
 
 - **Rare and elite icons**: Blizzard's own nameplate icons just after the name: a silver star for a rare, a silver dragon for a rare elite, and (if you like) a gold dragon for an elite or a boss. "Rare / elite icon" on the Casts & debuffs page: rares and rare elites (the default), elites too, or none; its size is yours to set. With the name not on its own row, it sits before the gauge.
