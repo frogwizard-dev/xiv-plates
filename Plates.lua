@@ -243,7 +243,9 @@ function Plates:Layout(plate)
     -- its own opacity, like the cast bar and debuffs do.
     plate:SetIgnoreParentAlpha(not db.gameFade)
 
-    for _, key in ipairs({ "name", "left", "right", "threat" }) do
+    -- The name through a font family, so names in other scripts draw.
+    ns.Media:SetNameFont(plate.name, db.font, Size(db, "name"), db.outline)
+    for _, key in ipairs({ "left", "right", "threat" }) do
         ns.Media:SetFont(plate[key], db.font, Size(db, key), db.outline)
     end
     local targetColor = db.colors.target
@@ -407,21 +409,30 @@ function Plates:UpdateQuest(plate)
     plate.left:SetPoint("RIGHT", plate.right, "LEFT", -4, 0)
 end
 
-function Plates:UpdateTarget()
+-- One plate's look as your target or not (target: your target's plate base, or nil).
+function Plates:TargetOne(plate, target)
     local db = ns.db
+    local isTarget = target == plate.base
+    plate.isTarget = isTarget
+    -- Your target's gauge a pixel thicker.
+    plate.gauge:SetHeight(db.height + (isTarget and 1 or 0))
+    plate.chevronLeft:SetShown(isTarget and db.chevrons)
+    plate.chevronRight:SetShown(isTarget and db.chevrons)
+    plate:SetScale((isTarget and db.targetScale or 1) * (db.scale or 1))
+    plate:SetAlpha((target and not isTarget) and db.otherAlpha or 1)
+    self:UpdateColour(plate)
+    return isTarget
+end
+
+function Plates:UpdateTarget()
     local target = C_NamePlate.GetNamePlateForUnit("target")
-    Engine.Each(function(plate)
-        local isTarget = target == plate.base
-        plate.isTarget = isTarget
-        -- Your target's gauge a pixel thicker.
-        plate.gauge:SetHeight(db.height + (isTarget and 1 or 0))
-        plate.chevronLeft:SetShown(isTarget and db.chevrons)
-        plate.chevronRight:SetShown(isTarget and db.chevrons)
-        plate:SetScale((isTarget and db.targetScale or 1) * (db.scale or 1))
-        plate:SetAlpha((target and not isTarget) and db.otherAlpha or 1)
-        self:UpdateColour(plate)
-    end)
+    Engine.Each(function(plate) self:TargetOne(plate, target) end)
     self:PlaceCombo()
+end
+
+-- A plate just come: only its own target look, and the combo row if it's your target's.
+function Plates:TargetNew(plate)
+    if self:TargetOne(plate, C_NamePlate.GetNamePlateForUnit("target")) then self:PlaceCombo() end
 end
 
 ------------------------------------------------------------------------------
@@ -516,6 +527,8 @@ local PARTY_UPDATES = {
 local skin = {
     owner = "XIVPlates",
     enabled = function() return ns.db.enabled end,
+    -- (Read by EnmityList: its own threat text on plates stays off while ours shows.)
+    threatText = function() return ns.db.enabled and ns.db.threatText and true or false end,
     party = function() return ns.db.party end,
     create = Create,
     layout = function(plate) Plates:Layout(plate) end,
@@ -524,6 +537,7 @@ local skin = {
         if Update then Update(plate) end
     end,
     target = function() Plates:UpdateTarget() end,
+    targetPlate = function(plate) Plates:TargetNew(plate) end,
     castShield = function(unitFrame, cast, shown, ours) Plates:CastShield(unitFrame, cast, shown, ours) end,
     castFill = function(cast) Engine.OverFill(CastFill(cast), cast) end,
     -- An interrupted cast turns red, which ours mustn't cover; the next cast sets it again.

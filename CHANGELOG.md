@@ -1,5 +1,12 @@
 # XIVPlates
 
+## 0.4.1
+
+- A plate coming up looks at its own target state only, not every plate's.
+- Names in Russian, Korean or Chinese draw in every font.
+- Mobs that turn hostile after their plate shows, duels and PvP flags get the right plate; the quest mark is for your own objectives only; no threat colours while you play alone as a damage dealer.
+- Shared code (FrogLib 1.12.0): see its notes for the rest of what's fixed.
+
 ## 0.4.0
 
 - **Party plates**: your party and raid members' nameplates in the XIV look too: the same thin gauge (or framed one), the name centred above and the level and health under it, from the same text templates. The gauge is FFXIV's party green (the HP green XIVPlayer uses) or each player's class colour, and the green is yours to set. Your target among them stands out as an enemy target does. No cast line, buffs, debuffs or threat on them, as FFXIV shows party casts in its party list rather than over heads; their pets keep Blizzard's plates. On to start with: "Party plates" on the Look & text page, a switch of its own, so you can have either kind without the other.
