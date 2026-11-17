@@ -4,6 +4,11 @@ local _, ns = ...
 -- level and health under the gauge's ends (or over: belowBar), the cast a thinner line underneath; your
 -- target stands out, the others dim. FrogLib's Plates engine takes the plates over (Blizzard's cast bar and
 -- debuffs kept and moved round ours, as FrogPlates does); values secret in combat only go to widgets.
+-- Party plates (plate.friend, "Party plates" on): your party and raid members in the same look, in FFXIV's
+-- party green or their class colour. No cast line or debuffs on them, as FFXIV shows party casts in its
+-- party list, not over heads; Blizzard's cast bar and buffs stay put out of sight, so a plate goes back to
+-- Blizzard cleanly when its player leaves your group. No threat, quest "!", execute, tapped grey or combo
+-- points either: those are about enemies.
 
 local Plates = {}
 ns.Plates = Plates
@@ -56,6 +61,18 @@ local function Colour(unit)
     end
     if db.colorMode == "xiv" then return Color.XIVUnit(unit) end
     return Color.Unit(unit, REACTION)
+end
+
+-- A party plate's: FFXIV's party green (XIVPlayer's HP colour, colors.party), or their class colour.
+local function PartyColour(unit)
+    local db = ns.db
+    if db.partyColor == "class" then
+        local _, class = UnitClass(unit)
+        local r, g, b = Color.Class(class)
+        if r then return r, g, b end
+    end
+    local party = db.colors.party
+    return party.r, party.g, party.b
 end
 
 -- How far above the gauge the text over it sits.
@@ -261,6 +278,7 @@ function Plates:Layout(plate)
     local threatX, threatY = Nudge(db, "threat")
     plate.threat:SetPoint("LEFT", bar, "RIGHT", 6 + db.textSize + threatX, threatY)
     self:UpdateQuest(plate)
+    if plate.friend then return end
 
     LayoutCast(plate, db)
     -- Your debuffs over the name, crowd control past the gauge's right end.
@@ -291,7 +309,7 @@ function Plates:UpdateHealth(plate)
 end
 
 function Plates:UpdateExecute(plate)
-    local below = ns.db.execute and Engine.ExecuteBelow()
+    local below = not plate.friend and ns.db.execute and Engine.ExecuteBelow()
     if not below then
         plate.execute:Hide()
         return
@@ -303,8 +321,13 @@ end
 -- The gauge's colour, and the text in a light version of it as FFXIV prints it, by hostility
 -- (whatever the gauge shows for threat), or white. Your target's text in the target colour.
 function Plates:UpdateColour(plate)
-    local r, g, b = Colour(plate.unit)
-    if not r then r, g, b = 0.9, 0.32, 0.25 end
+    local r, g, b
+    if plate.friend then
+        r, g, b = PartyColour(plate.unit)
+    else
+        r, g, b = Colour(plate.unit)
+        if not r then r, g, b = 0.9, 0.32, 0.25 end
+    end
     plate.gauge:SetColor(r, g, b)
     local db = ns.db
     local textR, textG, textB = 1, 1, 1
@@ -312,7 +335,7 @@ function Plates:UpdateColour(plate)
         local target = db.colors.target
         textR, textG, textB = target.r, target.g, target.b
     elseif db.textColor == "reaction" then
-        if Tapped(plate.unit) then
+        if not plate.friend and Tapped(plate.unit) then
             textR, textG, textB = Color.Lighten(r, g, b, 0.3)
         else
             textR, textG, textB = Color.Unit(plate.unit, HOSTILITY)
@@ -343,14 +366,15 @@ function Plates:UpdateRank(plate)
     local atlas = classification and RANK[classification]
     if mode == "rare" and (classification == "elite" or classification == "worldboss") then atlas = nil end
     if atlas then plate.rank:SetAtlas(atlas) end
-    plate.rank:SetShown(atlas ~= nil)
+    -- "None" leaves atlas false: hidden, not the last icon this plate showed.
+    plate.rank:SetShown(atlas and true or false)
 end
 
 -- A "!" before the level and name when your quests still need this enemy. The level and name sit
 -- on their own row above the health (nameRow), as long as they need to be, or beside it.
 function Plates:UpdateQuest(plate)
     local db = ns.db
-    local shown = plate.unit and db.questMarker and Engine.OnQuest(plate.unit) or false
+    local shown = plate.unit and not plate.friend and db.questMarker and Engine.OnQuest(plate.unit) or false
     local size = Size(db, db.nameRow and "name" or "left") + 4
     local tuck = math.floor(size * 0.3 + 0.5)                     -- how far the "!" tucks under the text
     local shift = shown and math.floor(size * 0.45 + 0.5) or 0    -- the left text moved over for it
@@ -412,7 +436,7 @@ function Plates:PlaceCombo()
     local target = C_NamePlate.GetNamePlateForUnit("target")
     local here
     Engine.Each(function(plate)
-        if plate.base == target then here = plate end
+        if plate.base == target and not plate.friend then here = plate end
     end)
     local shown = (cfg.enabled and here and db.enabled and combo:Refresh(false)) and true or false
     if not shown then combo.holder:Hide() end
@@ -474,13 +498,29 @@ local UPDATES = {
     end,
 }
 
+-- A party plate's (the engine sends it no others): the enemy parts hidden, in case the plate showed
+-- an enemy last.
+local PARTY_UPDATES = {
+    all = function(plate)
+        Plates:UpdateHealth(plate)
+        Plates:UpdateColour(plate)
+        Plates:UpdateMark(plate)
+        plate.threat:Hide()
+        plate.rank:Hide()
+    end,
+    health = UPDATES.health,
+    name = UPDATES.name,
+    mark = UPDATES.mark,
+}
+
 local skin = {
     owner = "XIVPlates",
     enabled = function() return ns.db.enabled end,
+    party = function() return ns.db.party end,
     create = Create,
     layout = function(plate) Plates:Layout(plate) end,
     update = function(plate, what)
-        local Update = UPDATES[what]
+        local Update = (plate.friend and PARTY_UPDATES or UPDATES)[what]
         if Update then Update(plate) end
     end,
     target = function() Plates:UpdateTarget() end,
@@ -488,7 +528,7 @@ local skin = {
     castFill = function(cast) Engine.OverFill(CastFill(cast), cast) end,
     -- An interrupted cast turns red, which ours mustn't cover; the next cast sets it again.
     castInterrupted = function(cast) CastFill(cast):SetAlpha(0) end,
-    -- Given back to Blizzard (a friendly plate next): its icon back, our fill away.
+    -- Given back to Blizzard (a friendly plate next), or a party plate now: its icon back, our fill away.
     release = function(_, cast)
         if cast.Icon then cast.Icon:SetAlpha(1) end
         if casts[cast] then casts[cast]:SetAlpha(0) end

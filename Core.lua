@@ -1,12 +1,16 @@
 local ADDON, ns = ...
 
--- XIVPlates: FFXIV-style enemy nameplates (see Plates.lua), to go with XIVPlayer and XIVTarget.
+-- XIVPlates: FFXIV-style enemy and party nameplates (see Plates.lua), to go with XIVPlayer and XIVTarget.
 
 -- The settings controls are FrogLib's (UI.lua); every change calls ns.Refresh().
 local UI = FrogLib.UI.Kit({ refresh = function() ns.Refresh() end })
 
 ns.defaults = {
     enabled = true,
+    -- Your party and raid members' plates in the same look (not their pets'), with or without the enemy
+    -- ones; their gauge in FFXIV's party green (colors.party) or, with partyColor "class", their class colour.
+    party = true,
+    partyColor = "xiv",
     -- The gauge: "line" (a hair-thin glowing line, like XIVTarget's) or "framed" (the gold-rimmed
     -- parameter bar, like XIVPlayer's). width 0: as wide as Blizzard's plate.
     style = "line",
@@ -74,6 +78,7 @@ ns.defaults = {
         uninterruptible = { r = 0.58, g = 0.58, b = 0.62 },
         execute = { r = 0.66, g = 0.38, b = 0.96 },
         tapped = { r = 0.55, g = 0.55, b = 0.55 },
+        party = { r = 0.45, g = 0.80, b = 0.30 },   -- FFXIV's HP green, as XIVPlayer's HP gauge
     },
 }
 
@@ -94,6 +99,7 @@ local TEXT_COLORS = UI.Options("gauge", "A light version of the gauge's", "react
     "By hostility (hostile red, neutral yellow)", "white", "White")
 local RANKS = UI.Options("rare", "Rares and rare elites", "all", "Rares and elites", "off", "None")
 local ROLES = UI.Options("auto", "Auto (tanking stance, form or aura)", "tank", "Always tanking", "damage", "Never tanking")
+local PARTY_COLORS = UI.Options("xiv", "FFXIV's party green", "class", "Class colours")
 
 local function Help(page, place, text, height, indent)
     place(UI.Help(page, text, COLUMN_WIDTH - 10 - (indent or 0)), height, indent or 4)
@@ -108,6 +114,12 @@ local function BuildLook(page)
     local place, head = UI.Column(page, LEFT, COLUMN_WIDTH)
     head("Plates")
     place(UI.Checkbox(page, "XIV-style enemy nameplates", db, "enabled"), 28)
+    place(UI.Checkbox(page, "Party plates: your group's in the same look", db, "party"), 26)
+    Help(page, place, "Needs the game's Friendly Player Nameplates on (Options > Gameplay > Nameplates). "
+        .. "Inside dungeons and raids the game keeps friendly nameplates its own, so your group has "
+        .. "Blizzard's there.", 44, INDENT)
+    place(UI.Dropdown(page, "Their gauge", PARTY_COLORS, db, "partyColor"), 30, INDENT)
+    Swatch(page, place, "Party green", "party", INDENT)
     place(UI.Dropdown(page, "Gauge", STYLES, db, "style"), 30)
     place(UI.Dropdown(page, "Texture", function() return ns.Media:List("statusbar") end, db, "texture"), 30)
     place(UI.Checkbox(page, "The gauge eases to new values", db, "smooth"), 30)
@@ -116,8 +128,9 @@ local function BuildLook(page)
     place(UI.Stepper(page, "Gauge height", 1, 16, 1, db, "height"), 28)
     place(UI.Stepper(page, "Scale", 0.5, 2, 0.05, db, "scale", "%.2f"), 28)
     place(UI.Checkbox(page, "Let the game dim plates behind terrain or far away", db, "gameFade"), 30)
-    Help(page, place, "Friendly nameplates stay Blizzard's. The cast bar and your debuffs are Blizzard's own, "
-        .. "moved round the gauge, so they keep working where the game hides cast and aura details.", 44)
+    Help(page, place, "Other friendly nameplates stay Blizzard's. On enemies the cast bar and your debuffs are "
+        .. "Blizzard's own, moved round the gauge, so they keep working where the game hides cast and aura "
+        .. "details.", 44)
 
     local right, rightHead = UI.Column(page, RIGHT, COLUMN_WIDTH)
     rightHead("Text")
@@ -265,6 +278,21 @@ loader:SetScript("OnEvent", function(_, event, addonName)
         ns.db = XIVPlatesDB
     elseif event == "PLAYER_LOGIN" then
         ns.Plates:Init()
+        -- The first time you're in a dungeon or raid with a group and party plates on, say once why they're
+        -- Blizzard's there. Once said, nothing listens again.
+        if not ns.db.partyNoticed then
+            local notice = CreateFrame("Frame")
+            notice:RegisterEvent("PLAYER_ENTERING_WORLD")
+            notice:SetScript("OnEvent", function(frame)
+                local inside, kind = IsInInstance()
+                if not (ns.db.party and inside and (kind == "party" or kind == "raid") and IsInGroup()) then return end
+                ns.db.partyNoticed = true
+                frame:UnregisterAllEvents()
+                frame:SetScript("OnEvent", nil)
+                ns.Print("party plates: inside dungeons and raids the game keeps friendly nameplates its own, so "
+                    .. "your group has Blizzard's plates here and the XIV look again outside. (Said once.)")
+            end)
+        end
     end
 end)
 

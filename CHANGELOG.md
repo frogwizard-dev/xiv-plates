@@ -1,5 +1,14 @@
 # XIVPlates
 
+## 0.4.0
+
+- **Party plates**: your party and raid members' nameplates in the XIV look too: the same thin gauge (or framed one), the name centred above and the level and health under it, from the same text templates. The gauge is FFXIV's party green (the HP green XIVPlayer uses) or each player's class colour, and the green is yours to set. Your target among them stands out as an enemy target does. No cast line, buffs, debuffs or threat on them, as FFXIV shows party casts in its party list rather than over heads; their pets keep Blizzard's plates. On to start with: "Party plates" on the Look & text page, a switch of its own, so you can have either kind without the other.
+- **Not in dungeons or raids**: inside them the game keeps friendly nameplates for itself and no addon can change them, so your group has Blizzard's plates there; out in the world they're XIV again. The settings page says so under the checkbox, and the first time you're in a dungeon or raid with a group, XIVPlates says so once in chat.
+- Party plates need the game's **Friendly Player Nameplates** on (Options > Gameplay > Nameplates). With its "Only Show Names" on too, strangers show only their names while your group still gets the XIV gauge (which, like those names, can't be clicked).
+- Someone joining or leaving your group gets the XIV plate or Blizzard's at once, no reload needed. A party member who dies keeps their plate, so you can see who needs a res; one you duel gets an enemy's plate for the duel, so you can see their casts.
+- Fixed: with "Rare / elite icon" set to None, a plate that had shown a rare's icon no longer keeps showing it.
+- From FrogLib 1.11.0, which party plates need: each plate hears only its own unit's events, so busy raids cost far less, and the spell name on an enemy's cast bar is crisp rather than blurry. Fixed there too: a friendly player's plate no longer sometimes shows its cast bar, buffs or debuffs where an enemy's XIV plate had put them, and turning XIV plates off puts Blizzard's debuffs back in their own places.
+
 ## 0.3.1
 
 - Russian, Korean and Chinese clients: names no longer show blank. The default font (Michroma) has no letters for those languages, so there it's drawn in M PLUS 1p (Russian) or the game's own font (Korean, Chinese); your font setting stays as it is. From FrogLib 1.10.1.
