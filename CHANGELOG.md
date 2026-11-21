@@ -1,5 +1,11 @@
 # XIVPlates
 
+## 0.5.0
+
+- **Friendly names**: every other friendly nameplate (NPCs, pets, and players outside your group, or inside it too while party plates are off) can show the name alone in XIVPlates' font, with no health bar. Turn on "Friendly names" on the Look & text page. Names are in class colours for players and green for NPCs, or white. Your target's name takes the target colour. Raid marks show beside the name, and the gamepad's interact icon still shows over an NPC. The name has its own size and nudge on the Text sizes & nudges page. Off to start with. Mailboxes and other objects, capture bars, and opposite-faction players keep Blizzard's plates.
+- Friendly names need the game's Friendly Player Nameplates on, and Friendly NPC Nameplates for NPCs (Options > Gameplay > Nameplates). In dungeons and raids they're Blizzard's, as the game keeps friendly plates for itself there. An NPC that turns hostile gets an enemy plate at once, and someone joining your group gets a party plate (if those are on).
+- From FrogLib 1.15.0.
+
 ## 0.4.1
 
 - A plate coming up looks at its own target state only, not every plate's.
