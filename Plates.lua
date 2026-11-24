@@ -10,7 +10,8 @@ local _, ns = ...
 -- Blizzard cleanly when its player leaves your group. No threat, quest "!", execute, tapped grey or combo
 -- points either: those are about enemies.
 -- Friendly names (plate.nameOnly, "Friendly names" on): every other friendly plate, NPC or player, as
--- its name alone in our font, where the gauge would be, and its raid mark. No gauge or other text.
+-- its name alone in our font, where the gauge would be, and its raid mark. No gauge or other text. With
+-- "With a health bar" on (friendBar) they're drawn as party plates are instead (see Bare).
 
 local Plates = {}
 ns.Plates = Plates
@@ -70,10 +71,11 @@ local function Colour(unit)
     return Color.Unit(unit, REACTION)
 end
 
--- A party plate's: FFXIV's party green (XIVPlayer's HP colour, colors.party), or their class colour.
+-- A party plate's (and a friendly one's with a health bar): FFXIV's party green (XIVPlayer's HP colour,
+-- colors.party), or a player's class colour (NPCs have classes too, but stay green).
 local function PartyColour(unit)
     local db = ns.db
-    if db.partyColor == "class" then
+    if db.partyColor == "class" and FrogLib.Safe(UnitIsPlayer(unit)) == true then
         local _, class = UnitClass(unit)
         local r, g, b = Color.Class(class)
         if r then return r, g, b end
@@ -81,6 +83,9 @@ local function PartyColour(unit)
     local party = db.colors.party
     return party.r, party.g, party.b
 end
+
+-- A friendly plate outside your group shown as its name alone; with friendBar it's a party plate's look.
+local function Bare(plate) return plate.nameOnly and not ns.db.friendBar end
 
 -- How far above the gauge the text over it sits.
 local function Lift(db) return db.style == "framed" and 4 or 2 end
@@ -243,8 +248,8 @@ function Plates:Layout(plate)
     -- its own opacity, like the cast bar and debuffs do.
     plate:SetIgnoreParentAlpha(not db.gameFade)
     -- A name plate: the bar hidden, only placed (the name sits where it would be); none of the gauge's styling.
-    bar:SetShown(not plate.nameOnly)
-    if plate.nameOnly then
+    bar:SetShown(not Bare(plate))
+    if Bare(plate) then
         self:LayoutName(plate)
         return
     end
@@ -332,7 +337,7 @@ function Plates:UpdateText(plate)
     local db = ns.db
     textOptions.levelColor = db.levelColor
     textOptions.classColor = true
-    if plate.nameOnly then
+    if Bare(plate) then
         Unit.SetText(plate.name, "name", plate.unit, textOptions)
         return
     end
@@ -360,7 +365,7 @@ end
 -- The gauge's colour, and the text in a light version of it as FFXIV prints it, by hostility
 -- (whatever the gauge shows for threat), or white. Your target's text in the target colour.
 function Plates:UpdateColour(plate)
-    if plate.nameOnly then
+    if Bare(plate) then
         self:NameColour(plate)
         return
     end
@@ -470,15 +475,16 @@ function Plates:TargetOne(plate, target)
     local isTarget = target == plate.base
     -- A name plate's look depends only on being your target or dimmed: left alone while neither changed,
     -- so a new target doesn't repaint every name in a city.
-    if plate.nameOnly then
+    local bare = Bare(plate)
+    if bare then
         local look = isTarget and 1 or (target and 2 or 3)
         if plate.looked == look then return isTarget end
         plate.looked = look
     end
     plate.isTarget = isTarget
     -- Your target's gauge a pixel thicker; no gauge, so no chevrons, on a name plate.
-    local chevrons = isTarget and db.chevrons and not plate.nameOnly
-    if not plate.nameOnly then plate.gauge:SetHeight(db.height + (isTarget and 1 or 0)) end
+    local chevrons = isTarget and db.chevrons and not bare
+    if not bare then plate.gauge:SetHeight(db.height + (isTarget and 1 or 0)) end
     plate.chevronLeft:SetShown(chevrons)
     plate.chevronRight:SetShown(chevrons)
     plate:SetScale((isTarget and db.targetScale or 1) * (db.scale or 1))
@@ -572,8 +578,8 @@ local UPDATES = {
     end,
 }
 
--- A party plate's (the engine sends it no others): the enemy parts hidden, in case the plate showed
--- an enemy last.
+-- A party plate's, and a friendly one's with a health bar (the engine sends them no others): the enemy
+-- parts hidden, in case the plate showed an enemy last.
 local PARTY_UPDATES = {
     all = function(plate)
         Plates:UpdateHealth(plate)
@@ -584,6 +590,8 @@ local PARTY_UPDATES = {
     end,
     health = UPDATES.health,
     name = UPDATES.name,
+    -- Its faction or flags: a bar plate's text by hostility (and a player's class come late) again.
+    threat = function(plate) Plates:UpdateColour(plate) end,
     mark = UPDATES.mark,
 }
 
@@ -610,10 +618,11 @@ local skin = {
     threatText = function() return ns.db.enabled and ns.db.threatText and true or false end,
     party = function() return ns.db.party end,
     names = function() return ns.db.names end,
+    nameBars = function() return ns.db.friendBar end,
     create = Create,
     layout = function(plate) Plates:Layout(plate) end,
     update = function(plate, what)
-        local Update = ((plate.nameOnly and NAME_UPDATES) or (plate.friend and PARTY_UPDATES) or UPDATES)[what]
+        local Update = ((Bare(plate) and NAME_UPDATES) or (plate.friend and PARTY_UPDATES) or UPDATES)[what]
         if Update then Update(plate) end
     end,
     target = function() Plates:UpdateTarget() end,

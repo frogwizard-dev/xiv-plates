@@ -2,7 +2,7 @@
 ## Title: XIVPlates
 ## Category: Frog Wizard
 ## Notes: FFXIV-style enemy and party nameplates to go with XIVPlayer and XIVTarget: a thin glowing gauge, the name and level above, the cast hanging underneath, threat colours and your debuffs. Friendly names in the same font, if you like.
-## Version: 0.5.0
+## Version: 0.6.0
 ## X-Curse-Project-ID: 1745193
 ## SavedVariables: XIVPlatesDB
 ## IconTexture: Interface\Icons\Ability_Hunter_MarkedForDeath

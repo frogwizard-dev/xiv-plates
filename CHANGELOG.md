@@ -1,5 +1,11 @@
 # XIVPlates
 
+## 0.6.0
+
+- **Friendly plates with a health bar**: with "Friendly names" on, turn on "With a health bar, as party plates are" under it, and other friendly players and NPCs get the full XIV look your group has: the gauge, the name above it and the level and health under it, in the party plates' colours (FFXIV's party green, or class colours for players). Off to start with, so friendly names stay names alone unless you ask.
+- **Your own name in the XIV font**: "Names the game draws over heads in this font" (Look & text page, under Text) puts the names the game draws itself, your own above your head and anyone without a plate, in XIVPlates' font, so yours matches the friendly names around you. The game reads it as you log in, so log out and back in after turning it on or changing the font. Its size stays the game's. Off to start with.
+- From FrogLib 1.18.0.
+
 ## 0.5.0
 
 - **Friendly names**: every other friendly nameplate (NPCs, pets, and players outside your group, or inside it too while party plates are off) can show the name alone in XIVPlates' font, with no health bar. Turn on "Friendly names" on the Look & text page. Names are in class colours for players and green for NPCs, or white. Your target's name takes the target colour. Raid marks show beside the name, and the gamepad's interact icon still shows over an NPC. The name has its own size and nudge on the Text sizes & nudges page. Off to start with. Mailboxes and other objects, capture bars, and opposite-faction players keep Blizzard's plates.

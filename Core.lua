@@ -15,6 +15,9 @@ ns.defaults = {
     -- friendColor "reaction": players in their class colour, the rest by hostility; "white".
     names = false,
     friendColor = "reaction",
+    friendBar = false,  -- those as party plates are drawn instead (gauge, name, level and health), in their colours
+    -- The names the game draws over heads itself (yours, and anyone without a plate) in our font.
+    overheadFont = false,
     -- The gauge: "line" (a hair-thin glowing line, like XIVTarget's) or "framed" (the gold-rimmed
     -- parameter bar, like XIVPlayer's). width 0: as wide as Blizzard's plate.
     style = "line",
@@ -89,7 +92,29 @@ ns.defaults = {
 
 ns.Print = FrogLib.Util.Printer("XIVPlates", "f5dc8f")
 
+-- The names the game draws over heads (your own, NPCs without a plate) aren't frames: the game draws them
+-- in the font these globals name, read as you log in. Ours for Latin letters, and as the client's own
+-- font on a client that writes in them; the rest of the alphabets keep the game's. Put back when turned off.
+local LATIN_CLIENT = not ({ ruRU = true, koKR = true, zhCN = true, zhTW = true })[GetLocale()]
+local GAME_NAME_FONT, GAME_NAME_FONT_ROMAN = UNIT_NAME_FONT, UNIT_NAME_FONT_ROMAN
+local nameFontSet = false
+
+function ns.OverheadFont()
+    local db = ns.db
+    if not db.overheadFont then
+        if not nameFontSet then return end
+        UNIT_NAME_FONT, UNIT_NAME_FONT_ROMAN = GAME_NAME_FONT, GAME_NAME_FONT_ROMAN
+        nameFontSet = false
+        return
+    end
+    local font = FrogLib.Media.Usable(db.font) and db.font or ns.defaults.font
+    UNIT_NAME_FONT_ROMAN = font
+    if LATIN_CLIENT then UNIT_NAME_FONT = font end
+    nameFontSet = true
+end
+
 function ns.Refresh()
+    ns.OverheadFont()
     ns.Plates:Refresh()
 end
 
@@ -125,6 +150,7 @@ local function BuildLook(page)
     Swatch(page, place, "Party green", "party", INDENT)
     place(UI.Checkbox(page, "Friendly names: other friendly plates as the name alone", db, "names"), 26)
     place(UI.Dropdown(page, "Name colour", FRIEND_COLORS, db, "friendColor"), 30, INDENT)
+    place(UI.Checkbox(page, "With a health bar, as party plates are", db, "friendBar"), 26, INDENT)
     Help(page, place, "Both need the game's Friendly Player Nameplates on, and NPCs' names its Friendly NPC "
         .. "Nameplates too (Options > Gameplay > Nameplates). Inside dungeons and raids the game keeps "
         .. "friendly nameplates its own, so they're Blizzard's there.", 56, INDENT)
@@ -153,6 +179,9 @@ local function BuildLook(page)
         .. "|cffffd100max|r, |cffffd100percent|r (|cffffd100percent.1|r for a decimal). Empty hides it.", 30)
     right(UI.Dropdown(page, "Text colour", TEXT_COLORS, db, "textColor"), 30)
     right(UI.Checkbox(page, "The level coloured by how hard the enemy is", db, "levelColor"), 30)
+    right(UI.Checkbox(page, "Names the game draws over heads in this font", db, "overheadFont"), 26)
+    Help(page, right, "Your own name, and anyone without a plate. The game reads it as you log in, so log out "
+        .. "and back in after changing it. Its size stays the game's.", 44, INDENT)
 end
 
 local function BuildCasts(page)
@@ -283,6 +312,7 @@ loader:SetScript("OnEvent", function(_, event, addonName)
         end
         FrogLib.Util.CopyDefaults(ns.defaults, XIVPlatesDB)
         ns.db = XIVPlatesDB
+        ns.OverheadFont() -- before you're in the world, where the game reads it
     elseif event == "PLAYER_LOGIN" then
         ns.Plates:Init()
         -- The first time you're in a dungeon or raid with party plates (and a group) or friendly names on, say
